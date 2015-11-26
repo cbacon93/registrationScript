@@ -22,6 +22,13 @@ function register_getRandom($length) {
 	return $returnstr;
 }
 
+//default values
+function register_getDefaultValues($name) {
+	if (isset($_POST[$name])) {
+		echo htmlentities($_POST[$name]);
+	}
+}
+
 
 function register_checkUsernameChars($username) {
 	if (strlen($username) < 3 || strlen($username) > 20) {
@@ -253,7 +260,7 @@ function register_addUser($mysqli, $username, $pw1, $pw2, $email) {
 		
 		$res= json_decode($response, true);
 		if (!$res['success']) {
-			return "Captcha error!";
+			return "Please solve the Captcha!";
 		}
 	}
 
@@ -275,7 +282,96 @@ function register_addUser($mysqli, $username, $pw1, $pw2, $email) {
 	}
 	$stmt->close();
 	
+	//insert user
+	$salt = register_getRandom(20);
+	$pw = register_cryptStr($pw1, $salt);
+	$stmt = $mysqli->prepare("INSERT INTO user SET username=?, email=?, password=?, salt=?, register_time=UNIX_TIMESTAMP()");
+	$stmt->bind_param("ssss", $username, $email, $pw, $salt);
+	$stmt->execute();
+	$userid = $stmt->insert_id;
+	$stmt->close();
 	
+	//delete obsolete tokens
+	$mysql->query("DELETE FROM user_tokens WHERE time<UNIX_TIMESTAMP()-3600 AND action NOT 'activate'");
 	
+	//add token for activating
+	$token = register_getRandom(10);
+	$stmt = $mysqli->prepare("INSERT INTO user_tokens SET token=?, uid=?, action='activate', time=UNIX_TIMESTAMP(), email=?");
+	$stmt->bind_param("sis", $token, $userid, $email);
+	$stmt->execute();
+	$stmt->close();
+	
+	echo "Token: " . $token . "<br>";
+	//todo: send email
+}
+
+
+//activate token
+function register_activateToken($mysqli, $token) {
+	if (strlen($token) < 3 || strlen($token) > 100) {
+		return "Invalid Token";
+	}
+	$lfailed = register_checkLoginFailed($mysqli);
+	if ($lfailed >= $GLOBALS['REGISTER_FAILBANCOUNT']) {
+		return "You have been banned for 10 minutes, please try again later.";
+	}
+	
+	//get token
+	$stmt = $mysqli->prepare("SELECT id, action, email, uid FROM user_tokens WHERE token=? AND ( time>UNIX_TIMESTAMP()-3600 OR action='activate' ) LIMIT 1");
+	$stmt->bind_param("s", $token);
+	$stmt->execute();
+	$stmt->bind_result($res_id, $res_action, $res_email, $res_uid);
+	$stmt->store_result();
+	$stmt->fetch();
+	
+	if ($stmt->num_rows != 1) {
+		$stmt->close();
+		register_insertFailedLogin($mysqli);
+		return "Invalid Token";
+	}
+	$stmt->close();
+	
+	//token found -> delete
+	$stmt = $mysqli->prepare("DELETE FROM user_tokens WHERE id=? LIMIT 1");
+	$stmt->bind_param("i", $res_id);
+	$stmt->execute();
+	$stmt->close();
+	
+	//execute token
+	if ($res_action == "activate") {
+		register_activateUser($mysqli, $res_uid);
+	} else if ($res_action == "changeemail") {
+		register_changeEmail($mysqli, $res_uid, $res_email);
+	} else if ($res_action == "changeemail") {
+		$salt = register_getRandom(20);
+		$password = register_getRandom(20);
+		$crpw = register_cryptStr($password, $salt);
+		register_changePw($mysqli, $res_uid, $crpw, $salt);
+		//todo: send pw email
+		echo "New password: " . $password . "<br>";
+	}
+}
+
+//activate user id
+function register_activateUser($mysqli, $userid) {
+	$stmt = $mysqli->prepare("UPDATE user SET activated=1 WHERE id=? LIMIT 1");
+	$stmt->bind_param("i", $userid);
+	$stmt->execute();
+	$stmt->close();
+}
+
+//change user email
+function register_changeEmail($mysqli, $userid, $newemail) {
+	$stmt = $mysqli->prepare("UPDATE user SET email=? WHERE id=? LIMIT 1");
+	$stmt->bind_param("si", $newemail, $userid);
+	$stmt->execute();
+	$stmt->close();
+}
+
+function register_changePw($mysqli, $userid, $pw, $salt) {
+	$stmt = $mysqli->prepare("UPDATE user SET password=?, salt=? WHERE id=? LIMIT 1");
+	$stmt->bind_param("si", $pw, $salt, $userid);
+	$stmt->execute();
+	$stmt->close();
 }
 ?>

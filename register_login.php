@@ -28,7 +28,7 @@ if ($register_userid = register_checkSession($register_mysql)) {
 ?>
 
 <form action="register_login.php" method="post">
-<input type="text" name="username"><br>
+<input type="text" name="username" value="<?php register_getDefaultValues("username"); ?>"><br>
 <input type="password" name="password"><br>
 <input type="submit" value="Login">
 </form>

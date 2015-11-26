@@ -24,8 +24,8 @@ if (isset($_POST['username']) && isset($_POST['email']) && isset($_POST['passwor
 
 
 <form action="register_register.php" method="post">
-UN:<input type="text" name="username" required><br>
-EM:<input type="email" name="email" required><br>
+UN:<input type="text" name="username" value="<?php register_getDefaultValues("username"); ?>" required><br>
+EM:<input type="email" name="email" value="<?php register_getDefaultValues("email"); ?>" required><br>
 PW:<input type="password" name="password1" required><br>
 PW:<input type="password" name="password2" required><br>
 <div class="g-recaptcha" data-sitekey="<?php echo $GLOBALS['REGISTER_RECAPTCHA_PUBLIC']; ?>"></div>
