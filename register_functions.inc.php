@@ -292,7 +292,7 @@ function register_addUser($mysqli, $username, $pw1, $pw2, $email) {
 	$stmt->close();
 	
 	//delete obsolete tokens
-	$mysql->query("DELETE FROM user_tokens WHERE time<UNIX_TIMESTAMP()-3600 AND action NOT 'activate'");
+	$mysqli->query("DELETE FROM user_tokens WHERE time<UNIX_TIMESTAMP()-3600 AND action<>'activate'");
 	
 	//add token for activating
 	$token = register_getRandom(10);
@@ -301,8 +301,8 @@ function register_addUser($mysqli, $username, $pw1, $pw2, $email) {
 	$stmt->execute();
 	$stmt->close();
 	
-	echo "Token: " . $token . "<br>";
-	//todo: send email
+	//send activation email
+	register_sendActivationEmail($email, $token);
 }
 
 
@@ -347,8 +347,8 @@ function register_activateToken($mysqli, $token) {
 		$password = register_getRandom(20);
 		$crpw = register_cryptStr($password, $salt);
 		register_changePw($mysqli, $res_uid, $crpw, $salt);
-		//todo: send pw email
-		echo "New password: " . $password . "<br>";
+		//send pw email
+		register_sendNewPwEmail($res_email, $password);
 	}
 }
 
@@ -373,5 +373,95 @@ function register_changePw($mysqli, $userid, $pw, $salt) {
 	$stmt->bind_param("si", $pw, $salt, $userid);
 	$stmt->execute();
 	$stmt->close();
+}
+
+
+function register_sendActivationEmail($empfaenger, $token) {
+	$betreff = 'Marbbs account activation';
+	
+	$header = 'From: info@marbbs.com' . "\r\n" .
+		'Reply-To: info@marbbs.com' . "\r\n" .
+		'X-Mailer: PHP/' . phpversion();
+
+	$nachricht = 'Dear user,\r\n\r\n'
+		. 'thank you for registering at marbbs.com. To activate your account, please visit the link below or paste the key into the form at our webpage.\r\n'
+		. '\r\n'
+		. 'Key:\r\n'
+		. $token
+		. '\r\n'
+		. 'https://localhost/register_token.php?token=' . $token
+		. '\r\n'
+		. '\r\n'
+		. 'Best regards,\r\n'
+		. 'Marcel Haupt';
+	
+	mail($empfaenger, $betreff, $nachricht, $header);
+}
+
+function register_sendChangeEmailEmail($empfaenger, $token) {
+	$betreff = 'Marbbs email activation';
+	
+	$header = 'From: info@marbbs.com' . "\r\n" .
+		'Reply-To: info@marbbs.com' . "\r\n" .
+		'X-Mailer: PHP/' . phpversion();
+
+	$nachricht = 'Dear user,\r\n\r\n'
+		. 'You account has requested an email change. To activate your new email, please click on the link below.\r\n'
+		. '\r\n'
+		. 'Key:\r\n'
+		. $token
+		. '\r\n'
+		. 'https://localhost/register_token.php?token=' . $token
+		. '\r\n'
+		. '\r\n'
+		. 'Best regards,\r\n'
+		. 'Marcel Haupt';
+	
+	mail($empfaenger, $betreff, $nachricht, $header);
+}
+
+
+function register_sendForgotPwEmail($empfaenger, $token) {
+	$betreff = 'Marbbs forgot password';
+	
+	$header = 'From: info@marbbs.com' . "\r\n" .
+		'Reply-To: info@marbbs.com' . "\r\n" .
+		'X-Mailer: PHP/' . phpversion();
+
+	$nachricht = 'Dear user,\r\n\r\n'
+		. 'Your account requested a password reset. To reset your password, please click on the link below.\r\n'
+		. '\r\n'
+		. 'Key:\r\n'
+		. $token
+		. '\r\n'
+		. 'https://localhost/register_token.php?token=' . $token
+		. '\r\n'
+		. '\r\n'
+		. 'Best regards,\r\n'
+		. 'Marcel Haupt';
+	
+	mail($empfaenger, $betreff, $nachricht, $header);
+}
+
+
+function register_sendNewPwEmail($empfaenger, $newpw) {
+	$betreff = 'Marbbs forgot password';
+	
+	$header = 'From: info@marbbs.com' . "\r\n" .
+		'Reply-To: info@marbbs.com' . "\r\n" .
+		'X-Mailer: PHP/' . phpversion();
+
+	$nachricht = 'Dear user,\r\n\r\n'
+		. 'Your password has been reset. This is your new password:\r\n'
+		. '\r\n'
+		. $newpw
+		. '\r\n'
+		. 'Please change it as soon as possible.'
+		. '\r\n'
+		. '\r\n'
+		. 'Best regards,\r\n'
+		. 'Marcel Haupt';
+	
+	mail($empfaenger, $betreff, $nachricht, $header);
 }
 ?>
