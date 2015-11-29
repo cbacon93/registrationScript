@@ -14,11 +14,11 @@ if (!($register_userid = register_checkSession($register_mysql))) {
 
 if ($register_userid > 0)
 ?>
-<a href="?store=login" class="btn btn-default btn-sm" role="button">Login</a> <a href="?store=register" class="btn btn-default btn-sm" role="button">Register</a>
+<a href="register_login.php" class="btn btn-default btn-sm" role="button">Login</a> <a href="register_register.php" class="btn btn-default btn-sm" role="button">Register</a>
 <?php
 } else {
 ?>
-<a href="?store=login&logout" class="btn btn-default btn-sm" role="button">Logout</a>
+<a href="register_login.php?logout" class="btn btn-default btn-sm" role="button">Logout</a>
 <?php
 }
 ?>
