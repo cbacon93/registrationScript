@@ -1,4 +1,37 @@
 <?php
+defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
+
+
+function register_login_checks($register_mysql, &$error, &$userid) {
+	
+	if (isset($_POST['username']) && isset($_POST['password'])) {
+		$error = register_checkLogin($register_mysql, $_POST['username'], $_POST['password']);
+	}
+
+	if (isset($_GET['logout'])) {
+		register_deleteSession($register_mysql);
+		header("Location: ?store&msg=logout");
+		exit();
+		return false;
+	}
+
+	if ($register_userid = register_checkSession($register_mysql)) {
+		$userid = $register_userid;
+		return true;
+	}
+	return false;
+}
+
+
+
+function register_register_check($register_mysql, &$error) {
+	if (isset($_POST['username']) && isset($_POST['email']) && isset($_POST['password1']) && isset($_POST['password2'])) {
+		if (!($error = register_addUser($register_mysql, $_POST['username'], $_POST['password1'], $_POST['password2'], $_POST['email']))) {
+			return true;
+		}
+	}
+	return false;
+}
 
 
 function register_force_https() {
@@ -114,9 +147,9 @@ function register_checkLogin($mysqli, $username, $password) {
 		//get failed login attempts
 		$lfailed = register_checkLoginFailed($mysqli);
 		if ($lfailed >= floor($GLOBALS['REGISTER_FAILBANCOUNT']/2)) {
-			$failmessageadd = "If you forgot your password, please use the password recovery. You will be blocked after ". $GLOBALS['REGISTER_FAILBANCOUNT'] . " failed login attempts.";
+			$failmessageadd = "<div class=\"alert alert-warning\" role=\"alert\">If you forgot your password, please use the password recovery. You will be blocked after ". $GLOBALS['REGISTER_FAILBANCOUNT'] . " failed login attempts.</div>";
 			if ($lfailed >= $GLOBALS['REGISTER_FAILBANCOUNT']-1) {
-				$failmessageadd = "You were banned because of too many failed login attempts. Please try again in " . $GLOBALS['REGISTER_FAILBANTIME']/60 . " minutes.";
+				$failmessageadd = "<div class=\"alert alert-danger\" role=\"alert\">You were banned because of too many failed login attempts. Please try again in " . $GLOBALS['REGISTER_FAILBANTIME']/60 . " minutes.</div>";
 				if ($lfailed >= $GLOBALS['REGISTER_FAILBANCOUNT']) {
 					return $failmessageadd . "<br>";
 				}
@@ -135,19 +168,19 @@ function register_checkLogin($mysqli, $username, $password) {
 		//wrong username
 		if ($stmt->num_rows != 1) {
 			register_insertFailedLogin($mysqli);
-			return "Username not found!<br>" . $failmessageadd;
+			return "<div class=\"alert alert-danger\" role=\"alert\">Username not found!</div>" . $failmessageadd;
 		}
 		$stmt->close();
 		
 		//not activated
 		if ($res_act != 1) {
-			return "User not activated!";
+			return "<div class=\"alert alert-warning\" role=\"alert\">User is not activated!</div>";
 		}
 		
 		//password incorrect
 		if (!register_comparePW($password, $res_pw, $res_salt)) {
 			register_insertFailedLogin($mysqli);
-			return "Password incorrect!<br>" . $failmessageadd;
+			return "<div class=\"alert alert-danger\" role=\"alert\">Password incorrect!</div>" . $failmessageadd;
 		}
 		
 		//-> login successful
@@ -155,7 +188,7 @@ function register_checkLogin($mysqli, $username, $password) {
 		register_newSession($mysqli, $res_id);
 		
 	} else {
-		return "Invalid input!";
+		return "<div class=\"alert alert-danger\" role=\"alert\">Invalid input!</div>";
 	}
 }
 
@@ -225,26 +258,28 @@ function register_deleteSession($mysqli) {
 
 //register user
 function register_addUser($mysqli, $username, $pw1, $pw2, $email) {
+	//return "Registrations currently disabled!";
+	
 	if (!register_checkUsernameChars($username)) {
-		return "The username must met the following requirements:<ul><li>3-20 characters</li><li>only contains alphanumeric characters</li><li>first character must not be a number</li></ul>";
+		return "<div class=\"alert alert-danger\" role=\"alert\">The username must met the following requirements:<ul><li>3-20 characters</li><li>only contains alphanumeric characters</li><li>first character must not be a number</li></ul></div>";
 	}
 	if ($pw1 != $pw2) {
-		return "The two passwords do not match.";
+		return "<div class=\"alert alert-danger\" role=\"alert\">The two passwords do not match.</div>";
 	}
 	if (!register_checkPasswordChars($pw1)) {
-		return "The password is too weak.";
+		return "<div class=\"alert alert-danger\" role=\"alert\">The password is too weak.</div>";
 	}
 	if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-		return "The email is invalid";
+		return "<div class=\"alert alert-danger\" role=\"alert\">The email is invalid</div>";
 	}
 	$domain = explode("@", $email);
 	if (!checkdnsrr($domain[1], 'MX')) {
-		return "The email domain has no MX record.";
+		return "<div class=\"alert alert-danger\" role=\"alert\">The email domain has no MX record.</div>";
 	}
 	
 	//captcha
 	if (!isset($_POST['g-recaptcha-response'])) {
-		return "Please check the captcha!";
+		return "<div class=\"alert alert-danger\" role=\"alert\">Please check the captcha!</div>";
 	} else {
 		$fields = array('secret' => $GLOBALS['REGISTER_RECAPTCHA_PRIVATE'], 'response' => $_POST['g-recaptcha-response'], 'remoteip' => $_SERVER['REMOTE_ADDR']);
 		$ch = curl_init();
@@ -252,7 +287,6 @@ function register_addUser($mysqli, $username, $pw1, $pw2, $email) {
 		curl_setopt($ch, CURLOPT_POST, count($fields));
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $fields);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt ($ch, CURLOPT_CAINFO, "C:\\xampp\\htdocs\\register_script\\registrationScript\\ca-bundle.crt");
 		
 		$response = curl_exec($ch);
 		echo curl_error($ch);
@@ -260,7 +294,7 @@ function register_addUser($mysqli, $username, $pw1, $pw2, $email) {
 		
 		$res= json_decode($response, true);
 		if (!$res['success']) {
-			return "Please solve the Captcha!";
+			return "<div class=\"alert alert-danger\" role=\"alert\">Please solve the Captcha!</div>";
 		}
 	}
 
@@ -275,9 +309,9 @@ function register_addUser($mysqli, $username, $pw1, $pw2, $email) {
 	if ($stmt->num_rows != 0) {
 		$stmt->close();
 		if (strtoupper($res_us) == strtoupper($username)) {
-			return "The username has been already registered";
+			return "<div class=\"alert alert-danger\" role=\"alert\">The username has been already registered</div>";
 		} else {
-			return "The email has been already registered";
+			return "<div class=\"alert alert-danger\" role=\"alert\">The email has been already registered</div>";
 		}
 	}
 	$stmt->close();
@@ -309,11 +343,11 @@ function register_addUser($mysqli, $username, $pw1, $pw2, $email) {
 //activate token
 function register_activateToken($mysqli, $token) {
 	if (strlen($token) < 3 || strlen($token) > 100) {
-		return "Invalid Token";
+		return "<div class=\"alert alert-danger\" role=\"alert\">Invalid Token</div>";
 	}
 	$lfailed = register_checkLoginFailed($mysqli);
 	if ($lfailed >= $GLOBALS['REGISTER_FAILBANCOUNT']) {
-		return "You have been banned for 10 minutes, please try again later.";
+		return "<div class=\"alert alert-danger\" role=\"alert\">You have been banned for 10 minutes, please try again later.</div>";
 	}
 	
 	//get token
@@ -327,7 +361,7 @@ function register_activateToken($mysqli, $token) {
 	if ($stmt->num_rows != 1) {
 		$stmt->close();
 		register_insertFailedLogin($mysqli);
-		return "Invalid Token";
+		return "<div class=\"alert alert-danger\" role=\"alert\">Invalid Token</div>";
 	}
 	$stmt->close();
 	
@@ -377,90 +411,90 @@ function register_changePw($mysqli, $userid, $pw, $salt) {
 
 
 function register_sendActivationEmail($empfaenger, $token) {
-	$betreff = 'Marbbs account activation';
+	$betreff = "Marbbs account activation";
 	
-	$header = 'From: info@marbbs.com' . "\r\n" .
-		'Reply-To: info@marbbs.com' . "\r\n" .
-		'X-Mailer: PHP/' . phpversion();
+	$header = "From: info@marbbs.com" . "\r\n" .
+		"Reply-To: info@marbbs.com" . "\r\n" .
+		"X-Mailer: PHP/" . phpversion();
 
-	$nachricht = 'Dear user,\r\n\r\n'
-		. 'thank you for registering at marbbs.com. To activate your account, please visit the link below or paste the key into the form at our webpage.\r\n'
-		. '\r\n'
-		. 'Key:\r\n'
+	$nachricht = "Dear user,\r\n\r\n"
+		. "thank you for registering at marbbs.com. To activate your account, please visit the link below or paste the key into the form at our webpage.\r\n"
+		. "\r\n"
+		. "Key:\r\n"
 		. $token
-		. '\r\n'
-		. 'https://localhost/register_token.php?token=' . $token
-		. '\r\n'
-		. '\r\n'
-		. 'Best regards,\r\n'
-		. 'Marcel Haupt';
+		. "\r\n"
+		. "https://localhost/register_token.php&msg=activate&token=" . $token
+		. "\r\n"
+		. "\r\n"
+		. "Best regards,\r\n"
+		. "Marcel Haupt";
 	
 	mail($empfaenger, $betreff, $nachricht, $header);
 }
 
 function register_sendChangeEmailEmail($empfaenger, $token) {
-	$betreff = 'Marbbs email activation';
+	$betreff = "Marbbs email activation";
 	
-	$header = 'From: info@marbbs.com' . "\r\n" .
-		'Reply-To: info@marbbs.com' . "\r\n" .
-		'X-Mailer: PHP/' . phpversion();
+	$header = "From: info@marbbs.com" . "\r\n" .
+		"Reply-To: info@marbbs.com" . "\r\n" .
+		"X-Mailer: PHP/" . phpversion();
 
-	$nachricht = 'Dear user,\r\n\r\n'
-		. 'You account has requested an email change. To activate your new email, please click on the link below.\r\n'
-		. '\r\n'
-		. 'Key:\r\n'
+	$nachricht = "Dear user,\r\n\r\n"
+		. "You account has requested an email change. To activate your new email, please click on the link below.\r\n"
+		. "\r\n"
+		. "Key:\r\n"
 		. $token
-		. '\r\n'
-		. 'https://localhost/register_token.php?token=' . $token
-		. '\r\n'
-		. '\r\n'
-		. 'Best regards,\r\n'
-		. 'Marcel Haupt';
+		. "\r\n"
+		. "https://localhost/register_token.php?token=" . $token
+		. "\r\n"
+		. "\r\n"
+		. "Best regards,\r\n"
+		. "Marcel Haupt";
 	
 	mail($empfaenger, $betreff, $nachricht, $header);
 }
 
 
 function register_sendForgotPwEmail($empfaenger, $token) {
-	$betreff = 'Marbbs forgot password';
+	$betreff = "Marbbs forgot password";
 	
-	$header = 'From: info@marbbs.com' . "\r\n" .
-		'Reply-To: info@marbbs.com' . "\r\n" .
-		'X-Mailer: PHP/' . phpversion();
+	$header = "From: info@marbbs.com" . "\r\n" .
+		"Reply-To: info@marbbs.com" . "\r\n" .
+		"X-Mailer: PHP/" . phpversion();
 
-	$nachricht = 'Dear user,\r\n\r\n'
-		. 'Your account requested a password reset. To reset your password, please click on the link below.\r\n'
-		. '\r\n'
-		. 'Key:\r\n'
+	$nachricht = "Dear user,\r\n\r\n"
+		. "Your account requested a password reset. To reset your password, please click on the link below.\r\n"
+		. "\r\n"
+		. "Key:\r\n"
 		. $token
-		. '\r\n'
-		. 'https://localhost/register_token.php?token=' . $token
-		. '\r\n'
-		. '\r\n'
-		. 'Best regards,\r\n'
-		. 'Marcel Haupt';
+		. "\r\n"
+		. "https://localhost/register_token.php?token=" . $token
+		. "\r\n"
+		. "\r\n"
+		. "Best regards,\r\n"
+		. "Marcel Haupt";
 	
 	mail($empfaenger, $betreff, $nachricht, $header);
 }
 
 
 function register_sendNewPwEmail($empfaenger, $newpw) {
-	$betreff = 'Marbbs forgot password';
+	$betreff = "Marbbs forgot password";
 	
-	$header = 'From: info@marbbs.com' . "\r\n" .
-		'Reply-To: info@marbbs.com' . "\r\n" .
-		'X-Mailer: PHP/' . phpversion();
+	$header = "From: info@marbbs.com" . "\r\n" .
+		"Reply-To: info@marbbs.com" . "\r\n" .
+		"X-Mailer: PHP/" . phpversion();
 
-	$nachricht = 'Dear user,\r\n\r\n'
-		. 'Your password has been reset. This is your new password:\r\n'
-		. '\r\n'
+	$nachricht = "Dear user,\r\n\r\n"
+		. "Your password has been reset. This is your new password:\r\n"
+		. "\r\n"
 		. $newpw
-		. '\r\n'
-		. 'Please change it as soon as possible.'
-		. '\r\n'
-		. '\r\n'
-		. 'Best regards,\r\n'
-		. 'Marcel Haupt';
+		. "\r\n"
+		. "Please change it as soon as possible."
+		. "\r\n"
+		. "\r\n"
+		. "Best regards,\r\n"
+		. "Marcel Haupt";
 	
 	mail($empfaenger, $betreff, $nachricht, $header);
 }

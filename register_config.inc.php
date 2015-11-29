@@ -7,7 +7,7 @@ $REGISTER_RECAPTCHA_PUBLIC = "";
 $REGISTER_RECAPTCHA_PRIVATE = "";
 
 
-$register_mysql = new mysqli('localhost', 'root', '', 'marbbs');
+$register_mysql = new mysqli('localhost', 'root', '', 'register');
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 ?>

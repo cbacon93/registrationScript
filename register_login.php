@@ -4,27 +4,21 @@ require("register_config.inc.php");
 require("register_functions.inc.php");
 register_force_https();
 
-//check login form input
-if (isset($_POST['username']) && isset($_POST['password'])) {
-	if ($warning = register_checkLogin($register_mysql, $_POST['username'], $_POST['password'])) {
-		echo $warning;
-	} else {
-		//header("Location: ");
-		//exit();
-		echo "Login successful!";
-	}
-}
 
-if (isset($_GET['logout'])) {
-	register_deleteSession($register_mysql);
-	echo "Logged out successfully";
-}
+$warning = null;
+$register_userid = -1;
 
-if ($register_userid = register_checkSession($register_mysql)) {
+if (register_login_checks($register_mysql, $warning, $register_userid)) {
 	//header("Location: ");
-	//exit();
-	echo "Successfully registered with userid: " . $register_userid;
+	//exit(); //login successful
 }
+
+if ($register_userid) {
+	//header("Location: ");
+	//exit(); //already logged in
+}
+
+if ($warning) echo $warning;
 ?>
 
 <form action="register_login.php" method="post">

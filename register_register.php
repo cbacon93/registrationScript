@@ -4,20 +4,23 @@ require("register_config.inc.php");
 require("register_functions.inc.php");
 register_force_https();
 
-//already registered -> redirect
+//already logged in-> redirect
 if ($register_userid = register_checkSession($register_mysql)) {
 	//header("Location: ");
 	//exit();
 }
 
-//register forms
-if (isset($_POST['username']) && isset($_POST['email']) && isset($_POST['password1']) && isset($_POST['password2'])) {
-	if ($error = register_addUser($register_mysql, $_POST['username'], $_POST['password1'], $_POST['password2'], $_POST['email'])) {
-		echo $error;
-	} else {
-		echo "Registered successfully";
-	}
+
+$error = null;
+
+//registration successful
+if (register_register_check($register_mysql, $error)) {
+	header("Location: register_token.php?msg=activate");
+	exit();
 }
+
+
+if ($error) echo $error;
 ?>
 
 <script src='https://www.google.com/recaptcha/api.js'></script>
