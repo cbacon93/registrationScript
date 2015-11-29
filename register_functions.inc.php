@@ -1,7 +1,4 @@
 <?php
-defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
-
-
 function register_login_checks($register_mysql, &$error, &$userid) {
 	
 	if (isset($_POST['username']) && isset($_POST['password'])) {
