@@ -12,7 +12,7 @@ if (!($register_userid = register_checkSession($register_mysql))) {
 }
 
 
-if ($register_userid > 0)
+if ($register_userid > 0) {
 ?>
 <a href="register_login.php" class="btn btn-default btn-sm" role="button">Login</a> <a href="register_register.php" class="btn btn-default btn-sm" role="button">Register</a>
 <?php
