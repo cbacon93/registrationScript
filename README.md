@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/cbacon93/registrationScript.svg?branch=master)](https://travis-ci.org/cbacon93/registrationScript)
+
 # registrationScript
 Minimal PHP registration and login scripts
 
